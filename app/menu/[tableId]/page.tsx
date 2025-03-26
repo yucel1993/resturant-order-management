@@ -239,7 +239,7 @@ export default function MenuPage() {
     return (
       <div className="container mx-auto px-4 py-6 md:py-10 text-center">
         <p>Loading menu...</p>
-        <p>If you don't see result refresh the page 🙂 after you will see the results-</p>
+       
       </div>
     )
   }
@@ -249,6 +249,7 @@ export default function MenuPage() {
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">Table {tableId}</h1>
         <p className="text-muted-foreground">Browse our menu and place your order</p>
+        
       </div>
 
       {categories.length > 0 ? (
@@ -273,7 +274,7 @@ export default function MenuPage() {
                   getCategoryItems(category._id).map((item) => <MenuItem key={item._id} item={item} />)
                 ) : (
                   <p className="col-span-full text-center text-muted-foreground py-8">
-                    No items available in this category.
+                    <p className="text-muted-foreground">If you don't see result refresh the page</p>
                   </p>
                 )}
               </div>
