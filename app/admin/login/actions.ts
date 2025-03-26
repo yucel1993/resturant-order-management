@@ -18,20 +18,19 @@ export async function loginAdmin(username: string, password: string) {
 
   // Validate credentials
   if (username === adminUsername && password === adminPassword) {
-    // Set an authentication cookie (this is a simple implementation)
-    // In a production app, you would want to use a more secure method like JWT
-    const cookieStore = cookies()
+    // Set an authentication cookie
+    const cookieStore = await cookies(); // Await the cookies function
     cookieStore.set("admin-auth", "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24, // 1 day
       path: "/",
-    })
+    });
 
     return {
       success: true,
       message: "Login successful",
-    }
+    };
   }
 
   // If credentials don't match
