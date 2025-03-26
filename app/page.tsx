@@ -37,7 +37,7 @@ export default function Home() {
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Link href="/menu/demo">
+                  <Link href="/menu/100">
                     <Button variant="outline">Try Customer Interface</Button>
                   </Link>
                 </div>
