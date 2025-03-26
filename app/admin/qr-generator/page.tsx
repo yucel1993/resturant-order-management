@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function QRGenerator() {
   const [tableNumber, setTableNumber] = useState("1")
   const [qrSize, setQrSize] = useState("200")
-  const [baseUrl, setBaseUrl] = useState("https://example.com/menu")
+  const [baseUrl, setBaseUrl] = useState("https://resturant-order-management.vercel.app/menu")
 
   const qrUrl = `${baseUrl}/${tableNumber}`
 

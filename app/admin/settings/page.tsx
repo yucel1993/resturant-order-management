@@ -28,7 +28,7 @@ export default function SettingsPage() {
     requireCustomerName: true,
     showPrices: true,
     enableSpecialInstructions: true,
-    baseUrl: "https://example.com/menu",
+    baseUrl: "https://resturant-order-management.vercel.app/menu",
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
