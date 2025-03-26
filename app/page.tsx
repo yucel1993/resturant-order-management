@@ -10,7 +10,7 @@ export default function Home() {
         <div className="container flex h-16 items-center justify-between">
           <div className="text-xl font-bold">TableOrder</div>
           <nav className="flex items-center gap-6">
-            <Link href="/admin" className="text-sm font-medium">
+            <Link href="/admin/login" className="text-sm font-medium">
               Admin Login
             </Link>
           </nav>

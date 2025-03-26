@@ -28,6 +28,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 
+// Import the necessary functions at the top
+import { useRouter } from "next/navigation"
+
 interface OrderItem {
   id: string
   name: string
@@ -54,6 +57,17 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null)
+
+  const router = useRouter()
+
+  // Add a logout function
+  const logoutAdmin = () => {
+    document.cookie = "admin-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+    router.push("/admin/login")
+    toast({
+      description: "You have been logged out",
+    })
+  }
 
   useEffect(() => {
     fetchOrders()
@@ -239,13 +253,14 @@ export default function AdminDashboard() {
                   Admin <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
+              {/* Update the dropdown menu to include the logout functionality */}
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem onClick={logoutAdmin}>Logout</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -377,8 +392,8 @@ export default function AdminDashboard() {
                         <TableCell>Table {order.tableNumber}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>
-                          {order.items.map((item) => (
-                            <div key={item.id} className="text-sm">
+                          {order.items.map((item,i) => (
+                            <div key={i} className="text-sm">
                               {item.quantity}x {item.name}
                             </div>
                           ))}
