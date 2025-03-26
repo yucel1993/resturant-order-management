@@ -289,6 +289,9 @@ export default function TablesManagement() {
               <Link href="/admin/tables" className="text-sm font-medium">
                 Tables
               </Link>
+              <Link href="/admin/qr-generator" className="text-sm font-medium text-muted-foreground">
+                QR Generator
+              </Link>
               <Link href="/admin/settings" className="text-sm font-medium text-muted-foreground">
                 Settings
               </Link>

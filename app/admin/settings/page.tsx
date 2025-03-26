@@ -28,7 +28,7 @@ export default function SettingsPage() {
     requireCustomerName: true,
     showPrices: true,
     enableSpecialInstructions: true,
-    baseUrl: "https://resturant-order-management.vercel.app/menu",
+    baseUrl: "https://example.com/menu",
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -64,6 +64,9 @@ export default function SettingsPage() {
               </Link>
               <Link href="/admin/tables" className="text-sm font-medium text-muted-foreground">
                 Tables
+              </Link>
+              <Link href="/admin/qr-generator" className="text-sm font-medium text-muted-foreground">
+                QR Generator
               </Link>
               <Link href="/admin/settings" className="text-sm font-medium">
                 Settings

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Download, QrCode } from "lucide-react"
 import { QRCodeCanvas } from "qrcode.react"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -82,118 +83,152 @@ export default function QRGenerator() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 md:py-10">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">QR Code Generator</h1>
-        <p className="text-muted-foreground">Generate QR codes for your restaurant tables</p>
-      </div>
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-10 border-b bg-background">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-xl font-bold">
+              TableOrder
+            </Link>
+            <nav className="hidden md:flex items-center gap-6">
+              <Link href="/admin/dashboard" className="text-sm font-medium text-muted-foreground">
+                Dashboard
+              </Link>
+              <Link href="/admin/menu" className="text-sm font-medium text-muted-foreground">
+                Menu Management
+              </Link>
+              <Link href="/admin/tables" className="text-sm font-medium text-muted-foreground">
+                Tables
+              </Link>
+              <Link href="/admin/qr-generator" className="text-sm font-medium">
+                QR Generator
+              </Link>
+              <Link href="/admin/settings" className="text-sm font-medium text-muted-foreground">
+                Settings
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+      <main className="container mx-auto px-4 py-6 md:py-10">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">QR Code Generator</h1>
+          <p className="text-muted-foreground">Generate QR codes for your restaurant tables</p>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>QR Code Settings</CardTitle>
-            <CardDescription>Customize your QR code for each table</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="base-url">Base URL</Label>
-              <Input
-                id="base-url"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://your-domain.com/menu"
-              />
-              <p className="text-xs text-muted-foreground">
-                This is the base URL for your menu. Table number will be appended to this URL.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="table-number">Table Number</Label>
-              <Input
-                id="table-number"
-                type="number"
-                min="1"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="qr-size">QR Code Size</Label>
-              <Select value={qrSize} onValueChange={setQrSize}>
-                <SelectTrigger id="qr-size">
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="128">Small (128px)</SelectItem>
-                  <SelectItem value="200">Medium (200px)</SelectItem>
-                  <SelectItem value="256">Large (256px)</SelectItem>
-                  <SelectItem value="320">Extra Large (320px)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="pt-2">
-              <p className="text-sm font-medium">QR Code URL:</p>
-              <p className="text-sm text-muted-foreground break-all">{qrUrl}</p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2 sm:flex-row">
-            <Button className="w-full sm:w-auto" onClick={downloadQRCode}>
-              <Download className="mr-2 h-4 w-4" />
-              Download PNG
-            </Button>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={printQRCode}>
-              Print QR Code
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>QR Code Preview</CardTitle>
-            <CardDescription>Scan with your phone to test</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <div className="rounded-lg border p-4 bg-white">
-              <QRCodeCanvas id="qr-code" value={qrUrl} size={Number.parseInt(qrSize)} level="H" includeMargin={true} />
-            </div>
-            <div className="mt-4 text-center">
-              <p className="font-medium">Table {tableNumber}</p>
-              <p className="text-sm text-muted-foreground">Scan to order</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-bold mb-4">Bulk Generation</h2>
-        <Card>
-          <CardHeader>
-            <CardTitle>Generate Multiple QR Codes</CardTitle>
-            <CardDescription>Create QR codes for multiple tables at once</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>QR Code Settings</CardTitle>
+              <CardDescription>Customize your QR code for each table</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="start-table">Start Table</Label>
-                <Input id="start-table" type="number" min="1" defaultValue="1" />
+                <Label htmlFor="base-url">Base URL</Label>
+                <Input
+                  id="base-url"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder="https://resturant-order-management.vercel.app/menu"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This is the base URL for your menu. Table number will be appended to this URL.
+                </p>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="end-table">End Table</Label>
-                <Input id="end-table" type="number" min="1" defaultValue="10" />
+                <Label htmlFor="table-number">Table Number</Label>
+                <Input
+                  id="table-number"
+                  type="number"
+                  min="1"
+                  value={tableNumber}
+                  onChange={(e) => setTableNumber(e.target.value)}
+                />
               </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full sm:w-auto">
-              <QrCode className="mr-2 h-4 w-4" />
-              Generate Bulk QR Codes
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="qr-size">QR Code Size</Label>
+                <Select value={qrSize} onValueChange={setQrSize}>
+                  <SelectTrigger id="qr-size">
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="128">Small (128px)</SelectItem>
+                    <SelectItem value="200">Medium (200px)</SelectItem>
+                    <SelectItem value="256">Large (256px)</SelectItem>
+                    <SelectItem value="320">Extra Large (320px)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-sm font-medium">QR Code URL:</p>
+                <p className="text-sm text-muted-foreground break-all">{qrUrl}</p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row">
+              <Button className="w-full sm:w-auto" onClick={downloadQRCode}>
+                <Download className="mr-2 h-4 w-4" />
+                Download PNG
+              </Button>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={printQRCode}>
+                Print QR Code
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>QR Code Preview</CardTitle>
+              <CardDescription>Scan with your phone to test</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <div className="rounded-lg border p-4 bg-white">
+                <QRCodeCanvas
+                  id="qr-code"
+                  value={qrUrl}
+                  size={Number.parseInt(qrSize)}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              <div className="mt-4 text-center">
+                <p className="font-medium">Table {tableNumber}</p>
+                <p className="text-sm text-muted-foreground">Scan to order</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Bulk Generation</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Generate Multiple QR Codes</CardTitle>
+              <CardDescription>Create QR codes for multiple tables at once</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="start-table">Start Table</Label>
+                  <Input id="start-table" type="number" min="1" defaultValue="1" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end-table">End Table</Label>
+                  <Input id="end-table" type="number" min="1" defaultValue="10" />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button className="w-full sm:w-auto">
+                <QrCode className="mr-2 h-4 w-4" />
+                Generate Bulk QR Codes
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </main>
     </div>
   )
 }

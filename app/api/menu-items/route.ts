@@ -22,13 +22,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    await connectToDatabase()
-    const menuItem = new MenuItem(body)
-    await menuItem.save()
-    return NextResponse.json(menuItem, { status: 201 })
+    const body = await request.json();
+    await connectToDatabase();
+    const menuItem = new MenuItem(body);
+    await menuItem.save();
+    return NextResponse.json(menuItem, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create menu item" }, { status: 500 })
+    console.error('Error creating menu item:', error);
+    return NextResponse.json(
+      { error: 'Failed to create menu item', details: error.message },
+      { status: 500 }
+    );
   }
 }
 
