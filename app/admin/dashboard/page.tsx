@@ -60,9 +60,10 @@ export default function AdminDashboard() {
 
   const router = useRouter()
 
-  // Add a logout function
-  const logoutAdmin = () => {
-    document.cookie = "admin-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+   // Add a logout function
+   const logoutAdmin = () => {
+    // Set the cookie to expire immediately and clear its value
+    document.cookie = "admin-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; secure; samesite=strict"
     router.push("/admin/login")
     toast({
       description: "You have been logged out",
