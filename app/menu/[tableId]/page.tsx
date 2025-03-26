@@ -239,6 +239,7 @@ export default function MenuPage() {
     return (
       <div className="container mx-auto px-4 py-6 md:py-10 text-center">
         <p>Loading menu...</p>
+        <p>If you don't see result refresh the page 🙂 after you will see the results-</p>
       </div>
     )
   }
