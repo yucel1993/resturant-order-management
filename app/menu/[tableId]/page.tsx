@@ -71,8 +71,8 @@ export default function MenuPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           // Replace these coordinates with your restaurant's actual coordinates
-          const restaurantLat = 37.7749 // Your restaurant's latitude
-          const restaurantLng = -122.4194 // Your restaurant's longitude
+          const restaurantLat = 40.038240 // Your restaurant's latitude
+          const restaurantLng = 32.888812 // Your restaurant's longitude
           const maxDistanceInMeters = 500 // Maximum allowed distance (adjust as needed)
 
           const distance = calculateDistance(
