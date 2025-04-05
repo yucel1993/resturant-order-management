@@ -37,6 +37,7 @@ interface TableType {
   capacity: number
   status: "available" | "occupied" | "reserved"
   qrCode?: string
+  activeOrders?: number
 }
 
 export default function TablesManagement() {
@@ -62,6 +63,11 @@ export default function TablesManagement() {
 
   useEffect(() => {
     fetchTables()
+
+    // Set up a refresh interval to update table statuses
+    const intervalId = setInterval(fetchTables, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(intervalId) // Clean up on unmount
   }, [])
 
   const fetchTables = async () => {
@@ -72,7 +78,28 @@ export default function TablesManagement() {
         throw new Error("Failed to fetch tables")
       }
       const data = await response.json()
-      setTables(data)
+
+      // Get active orders for each table
+      const tablesWithOrders = await Promise.all(
+        data.map(async (table: TableType) => {
+          try {
+            const ordersResponse = await fetch(`/api/orders?tableId=${table._id}&status=pending,preparing,ready`)
+            if (ordersResponse.ok) {
+              const orders = await ordersResponse.json()
+              return {
+                ...table,
+                activeOrders: orders.length,
+              }
+            }
+            return table
+          } catch (error) {
+            console.error(`Error fetching orders for table ${table.number}:`, error)
+            return table
+          }
+        }),
+      )
+
+      setTables(tablesWithOrders)
     } catch (error) {
       console.error("Error fetching tables:", error)
       toast({
@@ -246,7 +273,21 @@ export default function TablesManagement() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, activeOrders?: number) => {
+    // If there are active orders, always show as occupied regardless of status
+    if (activeOrders && activeOrders > 0) {
+      return (
+        <div className="flex flex-col items-start gap-1">
+          <Badge variant="outline" className="bg-red-100 text-red-800">
+            Occupied
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {activeOrders} active {activeOrders === 1 ? "order" : "orders"}
+          </span>
+        </div>
+      )
+    }
+
     switch (status) {
       case "available":
         return (
@@ -308,10 +349,15 @@ export default function TablesManagement() {
 
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold">Tables</h2>
-            <Button onClick={openAddTableDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Table
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={fetchTables}>
+                Refresh
+              </Button>
+              <Button onClick={openAddTableDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Table
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-md border">
@@ -336,7 +382,7 @@ export default function TablesManagement() {
                     <TableRow key={table._id}>
                       <TableCell className="font-medium">Table {table.number}</TableCell>
                       <TableCell>{table.capacity} people</TableCell>
-                      <TableCell>{getStatusBadge(table.status)}</TableCell>
+                      <TableCell>{getStatusBadge(table.status, table.activeOrders)}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

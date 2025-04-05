@@ -60,16 +60,15 @@ export default function AdminDashboard() {
 
   const router = useRouter()
 
-   // Add a logout function
-   const logoutAdmin = async () => {
-    await fetch('/api/logout', {
-      method: 'POST',
-    });
-    router.push('/admin/login');
+  // Add a logout function
+  const logoutAdmin = () => {
+    // Set the cookie to expire immediately and clear its value
+    document.cookie = "admin-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; secure; samesite=strict"
+    router.push("/admin/login")
     toast({
-      description: 'You have been logged out',
-    });
-  };
+      description: "You have been logged out",
+    })
+  }
 
   useEffect(() => {
     fetchOrders()
@@ -96,6 +95,7 @@ export default function AdminDashboard() {
     }
   }
 
+  // Add this function to your dashboard component
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -110,9 +110,26 @@ export default function AdminDashboard() {
         throw new Error("Failed to update order status")
       }
 
+      const updatedOrder = await response.json()
+
+      // Update the orders state
       setOrders((prevOrders) =>
         prevOrders.map((order) => (order._id === orderId ? { ...order, status: newStatus } : order)),
       )
+
+      // If the order is completed or cancelled, check if we need to update table status
+      if (newStatus === "completed" || newStatus === "cancelled") {
+        // Get the table ID from the order
+        const order = orders.find((o) => o._id === orderId)
+        if (order) {
+          // Check if there are any other active orders for this table
+          const tableStatusResponse = await fetch(`/api/orders/update-table-status?tableId=${order.tableId}`)
+          if (tableStatusResponse.ok) {
+            // The API will automatically set the table to available if there are no active orders
+            console.log("Table status updated")
+          }
+        }
+      }
 
       toast({
         description: `Order status updated to ${newStatus}`,
@@ -397,8 +414,8 @@ export default function AdminDashboard() {
                         <TableCell>Table {order.tableNumber}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>
-                          {order.items.map((item,i) => (
-                            <div key={i} className="text-sm">
+                          {order.items.map((item) => (
+                            <div key={item.id} className="text-sm">
                               {item.quantity}x {item.name}
                             </div>
                           ))}

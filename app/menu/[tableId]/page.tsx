@@ -64,6 +64,7 @@ export default function MenuPage() {
   const [isLocationChecking, setIsLocationChecking] = useState(true)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false)
+  const [submittedName, setSubmittedName] = useState("")
 
   // Add geolocation verification
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function MenuPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           // Replace these coordinates with your restaurant's actual coordinates
-          const restaurantLat = 40.038240 // Your restaurant's latitude
+          const restaurantLat = 40.03824 // Your restaurant's latitude
           const restaurantLng = 32.888812 // Your restaurant's longitude
           const maxDistanceInMeters = 500 // Maximum allowed distance (adjust as needed)
 
@@ -279,15 +280,30 @@ export default function MenuPage() {
 
       const orderData = await orderResponse.json()
 
-      toast({
-        description: "Your order has been submitted successfully!",
+      // Update table status to occupied
+      await fetch(`/api/tables/${table._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "occupied",
+        }),
       })
+
+      // Save the customer name for the confirmation dialog
+      setSubmittedName(customerName)
 
       // Reset cart after successful order
       setCart([])
-      setCustomerName("")
-      setSpecialInstructions("")
       setIsOrderDialogOpen(false)
+
+      // Show confirmation dialog
+      setIsConfirmationDialogOpen(true)
+
+      toast({
+        description: "Your order has been submitted successfully!",
+      })
     } catch (error) {
       console.error("Error submitting order:", error)
       toast({
@@ -405,6 +421,7 @@ export default function MenuPage() {
         </Button>
       </div>
 
+      {/* Order Dialog */}
       <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -480,12 +497,14 @@ export default function MenuPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog */}
       <Dialog open={isConfirmationDialogOpen} onOpenChange={setIsConfirmationDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Order Submitted!</DialogTitle>
             <DialogDescription>
-              Thank you for your order, {customerName}. Your order has been received and is being prepared.
+              Thank you for your order, {submittedName}. Your order has been received and is being prepared.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center py-4">
