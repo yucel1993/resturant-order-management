@@ -479,6 +479,26 @@ export default function MenuPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={isConfirmationDialogOpen} onOpenChange={setIsConfirmationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Order Submitted!</DialogTitle>
+            <DialogDescription>
+              Thank you for your order, {customerName}. Your order has been received and is being prepared.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-4">
+            <div className="rounded-full bg-primary/10 p-3">
+              <Check className="h-8 w-8 text-primary" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsConfirmationDialogOpen(false)} className="w-full">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
