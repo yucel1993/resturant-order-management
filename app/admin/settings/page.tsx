@@ -23,11 +23,15 @@ export default function SettingsPage() {
     phone: "+1 (555) 123-4567",
     email: "contact@myrestaurant.com",
     website: "https://myrestaurant.com",
+    latitude: "37.7749", // Default coordinates (San Francisco)
+    longitude: "-122.4194", // Default coordinates (San Francisco)
+    geofenceRadius: "500", // Radius in meters
     orderNotifications: true,
     autoAcceptOrders: false,
     requireCustomerName: true,
     showPrices: true,
     enableSpecialInstructions: true,
+    enableLocationVerification: true,
     baseUrl: "https://example.com/menu",
   })
 
@@ -42,9 +46,41 @@ export default function SettingsPage() {
 
   const saveSettings = () => {
     // In a real app, this would save to the database
+    // For now, we'll just show a success message
     toast({
       description: "Settings saved successfully",
     })
+  }
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setRestaurantSettings((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString(),
+          }))
+          toast({
+            description: "Current location detected and set",
+          })
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to get current location. Please enter coordinates manually.",
+          })
+        },
+      )
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Geolocation is not supported by this browser.",
+      })
+    }
   }
 
   return (
@@ -132,6 +168,70 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
                   <Input id="website" name="website" value={restaurantSettings.website} onChange={handleInputChange} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Location Settings</CardTitle>
+                <CardDescription>Configure geolocation verification</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="enableLocationVerification">Enable Location Verification</Label>
+                    <Switch
+                      id="enableLocationVerification"
+                      checked={restaurantSettings.enableLocationVerification}
+                      onCheckedChange={(checked) => handleSwitchChange("enableLocationVerification", checked)}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    When enabled, customers must be physically present in your restaurant to place orders.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Restaurant Coordinates</Label>
+                    <Button variant="outline" size="sm" onClick={getCurrentLocation}>
+                      Get Current Location
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Latitude</Label>
+                      <Input
+                        id="latitude"
+                        name="latitude"
+                        value={restaurantSettings.latitude}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Longitude</Label>
+                      <Input
+                        id="longitude"
+                        name="longitude"
+                        value={restaurantSettings.longitude}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="geofenceRadius">Geofence Radius (meters)</Label>
+                    <Input
+                      id="geofenceRadius"
+                      name="geofenceRadius"
+                      type="number"
+                      value={restaurantSettings.geofenceRadius}
+                      onChange={handleInputChange}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum distance from restaurant coordinates where orders are allowed.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

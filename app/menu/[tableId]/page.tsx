@@ -1,5 +1,7 @@
 "use client"
 
+import { CardContent } from "@/components/ui/card"
+
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Check, MinusCircle, PlusCircle } from "lucide-react"
@@ -57,12 +59,87 @@ export default function MenuPage() {
   const [customerName, setCustomerName] = useState("")
   const [specialInstructions, setSpecialInstructions] = useState("")
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isLocationVerified, setIsLocationVerified] = useState(false)
+  const [isLocationChecking, setIsLocationChecking] = useState(true)
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false)
 
+  // Add geolocation verification
   useEffect(() => {
-    fetchCategories()
-    fetchMenuItems()
+    if (navigator.geolocation) {
+      setIsLocationChecking(true)
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Replace these coordinates with your restaurant's actual coordinates
+          const restaurantLat = 40.038240 // Your restaurant's latitude
+          const restaurantLng = 32.888812 // Your restaurant's longitude
+          const maxDistanceInMeters = 500 // Maximum allowed distance (adjust as needed)
+
+          const distance = calculateDistance(
+            position.coords.latitude,
+            position.coords.longitude,
+            restaurantLat,
+            restaurantLng,
+          )
+
+          console.log("Distance from restaurant:", distance, "meters")
+
+          if (distance > maxDistanceInMeters) {
+            setIsLocationVerified(false)
+            setIsLocationDialogOpen(true)
+            toast({
+              variant: "destructive",
+              title: "Location Error",
+              description: "You must be in the restaurant to place an order.",
+            })
+          } else {
+            setIsLocationVerified(true)
+            fetchCategories()
+            fetchMenuItems()
+          }
+          setIsLocationChecking(false)
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+          setIsLocationChecking(false)
+          setIsLocationDialogOpen(true)
+          toast({
+            variant: "destructive",
+            title: "Location Error",
+            description: "Please enable location services to place an order.",
+          })
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+      )
+    } else {
+      setIsLocationChecking(false)
+      setIsLocationDialogOpen(true)
+      toast({
+        variant: "destructive",
+        title: "Location Error",
+        description: "Your browser doesn't support geolocation.",
+      })
+    }
   }, [])
+
+  // Helper function to calculate distance between two points
+  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371e3 // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180
+    const φ2 = (lat2 * Math.PI) / 180
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c // Distance in meters
+  }
 
   const fetchCategories = async () => {
     try {
@@ -155,6 +232,8 @@ export default function MenuPage() {
       return
     }
 
+    setIsProcessing(true)
+
     try {
       // Get table information
       const tableResponse = await fetch(`/api/tables?number=${tableId}`)
@@ -182,10 +261,11 @@ export default function MenuPage() {
         })),
         total: calculateTotal(),
         status: "pending",
+        paymentStatus: "pending",
         specialInstructions,
       }
 
-      const response = await fetch("/api/orders", {
+      const orderResponse = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,16 +273,21 @@ export default function MenuPage() {
         body: JSON.stringify(order),
       })
 
-      if (!response.ok) {
+      if (!orderResponse.ok) {
         throw new Error("Failed to submit order")
       }
 
-      setIsOrderDialogOpen(false)
-      setIsConfirmationDialogOpen(true)
+      const orderData = await orderResponse.json()
+
+      toast({
+        description: "Your order has been submitted successfully!",
+      })
 
       // Reset cart after successful order
       setCart([])
+      setCustomerName("")
       setSpecialInstructions("")
+      setIsOrderDialogOpen(false)
     } catch (error) {
       console.error("Error submitting order:", error)
       toast({
@@ -210,6 +295,8 @@ export default function MenuPage() {
         title: "Error",
         description: "Failed to submit your order. Please try again.",
       })
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -235,11 +322,37 @@ export default function MenuPage() {
     </Card>
   )
 
-  if (isLoading) {
+  // Show location verification dialog
+  if (isLocationDialogOpen) {
+    return (
+      <div className="container mx-auto px-4 py-6 md:py-10 flex flex-col items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Location Verification Required</CardTitle>
+            <CardDescription>We need to verify that you are in our restaurant to place an order.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>
+              For security reasons, our ordering system is only available to customers who are physically present in our
+              restaurant.
+            </p>
+            <p>Please ensure your location services are enabled and that you are within our restaurant premises.</p>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" onClick={() => router.push("/")}>
+              Return to Home
+            </Button>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isLocationChecking || isLoading) {
     return (
       <div className="container mx-auto px-4 py-6 md:py-10 text-center">
-        <p>Loading menu...</p>
-       
+        <p>Verifying your location and loading menu...</p>
       </div>
     )
   }
@@ -249,7 +362,6 @@ export default function MenuPage() {
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">Table {tableId}</h1>
         <p className="text-muted-foreground">Browse our menu and place your order</p>
-        
       </div>
 
       {categories.length > 0 ? (
@@ -274,7 +386,7 @@ export default function MenuPage() {
                   getCategoryItems(category._id).map((item) => <MenuItem key={item._id} item={item} />)
                 ) : (
                   <p className="col-span-full text-center text-muted-foreground py-8">
-                    <p className="text-muted-foreground">If you don't see result refresh the page</p>
+                    No items available in this category.
                   </p>
                 )}
               </div>
@@ -362,13 +474,12 @@ export default function MenuPage() {
             <Button variant="outline" onClick={() => setIsOrderDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitOrder} disabled={cart.length === 0 || !customerName}>
-              Submit Order
+            <Button onClick={handleSubmitOrder} disabled={cart.length === 0 || !customerName || isProcessing}>
+              {isProcessing ? "Processing..." : "Submit Order"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       <Dialog open={isConfirmationDialogOpen} onOpenChange={setIsConfirmationDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
