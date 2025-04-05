@@ -46,6 +46,7 @@ interface Order {
   items: OrderItem[]
   total: number
   status: string
+  paymentStatus: string
   createdAt: string
   specialInstructions?: string
 }
@@ -60,16 +61,15 @@ export default function AdminDashboard() {
 
   const router = useRouter()
 
-   // Add a logout function
-   const logoutAdmin = async () => {
-    await fetch('/api/logout', {
-      method: 'POST',
-    });
-    router.push('/admin/login');
+  // Add a logout function
+  const logoutAdmin = () => {
+    // Set the cookie to expire immediately and clear its value
+    document.cookie = "admin-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; secure; samesite=strict"
+    router.push("/admin/login")
     toast({
-      description: 'You have been logged out',
-    });
-  };
+      description: "You have been logged out",
+    })
+  }
 
   useEffect(() => {
     fetchOrders()
@@ -216,6 +216,37 @@ export default function AdminDashboard() {
         )
       default:
         return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const getPaymentStatusBadge = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case "paid":
+        return (
+          <Badge variant="outline" className="bg-green-100 text-green-800">
+            Paid
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+            Payment Pending
+          </Badge>
+        )
+      case "failed":
+        return (
+          <Badge variant="outline" className="bg-red-100 text-red-800">
+            Payment Failed
+          </Badge>
+        )
+      case "refunded":
+        return (
+          <Badge variant="outline" className="bg-blue-100 text-blue-800">
+            Refunded
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{paymentStatus}</Badge>
     }
   }
 
@@ -380,13 +411,14 @@ export default function AdminDashboard() {
                     <TableHead>Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Payment</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         Loading orders...
                       </TableCell>
                     </TableRow>
@@ -397,14 +429,15 @@ export default function AdminDashboard() {
                         <TableCell>Table {order.tableNumber}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>
-                          {order.items.map((item,i) => (
-                            <div key={i} className="text-sm">
+                          {order.items.map((item) => (
+                            <div key={item.id} className="text-sm">
                               {item.quantity}x {item.name}
                             </div>
                           ))}
                         </TableCell>
                         <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
+                        <TableCell>{getPaymentStatusBadge(order.paymentStatus)}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -442,7 +475,7 @@ export default function AdminDashboard() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         No orders found.
                       </TableCell>
                     </TableRow>
