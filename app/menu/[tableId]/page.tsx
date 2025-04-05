@@ -4,7 +4,7 @@ import { CardContent } from "@/components/ui/card"
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { MinusCircle, PlusCircle } from "lucide-react"
+import { Check, MinusCircle, PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -63,6 +63,7 @@ export default function MenuPage() {
   const [isLocationVerified, setIsLocationVerified] = useState(false)
   const [isLocationChecking, setIsLocationChecking] = useState(true)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
+  const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false)
 
   // Add geolocation verification
   useEffect(() => {
