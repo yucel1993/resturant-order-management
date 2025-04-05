@@ -278,28 +278,36 @@ export default function MenuPage() {
         throw new Error("Failed to submit order")
       }
 
-      const orderData = await orderResponse.json()
-
       // Update table status to occupied
-      await fetch(`/api/tables/${table._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: "occupied",
-        }),
-      })
+      try {
+        await fetch(`/api/tables/${table._id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: "occupied",
+          }),
+        })
+      } catch (error) {
+        console.error("Error updating table status:", error)
+        // Continue even if table status update fails
+      }
 
       // Save the customer name for the confirmation dialog
       setSubmittedName(customerName)
 
-      // Reset cart after successful order
+      // Reset form and cart
       setCart([])
+      setSpecialInstructions("")
+
+      // Close order dialog
       setIsOrderDialogOpen(false)
 
-      // Show confirmation dialog
-      setIsConfirmationDialogOpen(true)
+      // Important: Add a small delay before showing confirmation dialog
+      setTimeout(() => {
+        setIsConfirmationDialogOpen(true)
+      }, 100)
 
       toast({
         description: "Your order has been submitted successfully!",
@@ -499,7 +507,13 @@ export default function MenuPage() {
       </Dialog>
 
       {/* Confirmation Dialog */}
-      <Dialog open={isConfirmationDialogOpen} onOpenChange={setIsConfirmationDialogOpen}>
+      <Dialog
+        open={isConfirmationDialogOpen}
+        onOpenChange={(open) => {
+          console.log("Confirmation dialog state changed:", open)
+          setIsConfirmationDialogOpen(open)
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Order Submitted!</DialogTitle>
@@ -519,6 +533,20 @@ export default function MenuPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-8 text-center">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSubmittedName(customerName || "Test User")
+              setIsConfirmationDialogOpen(true)
+              console.log("Debug button clicked, dialog state:", isConfirmationDialogOpen)
+            }}
+          >
+            Test Confirmation Dialog
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
