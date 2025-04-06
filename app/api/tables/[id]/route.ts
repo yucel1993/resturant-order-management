@@ -2,10 +2,12 @@ import { type NextRequest, NextResponse } from "next/server"
 import connectToDatabase from "@/lib/mongodb"
 import Table from "@/models/Table"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// Update the GET function to await params
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectToDatabase()
-    const table = await Table.findById(params.id)
+    const { id } = await params
+    const table = await Table.findById(id)
 
     if (!table) {
       return NextResponse.json({ error: "Table not found" }, { status: 404 })
@@ -17,12 +19,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// Update the PUT function to await params
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
     await connectToDatabase()
+    const { id } = await params
 
-    const table = await Table.findByIdAndUpdate(params.id, body, { new: true, runValidators: true })
+    const table = await Table.findByIdAndUpdate(id, body, { new: true, runValidators: true })
 
     if (!table) {
       return NextResponse.json({ error: "Table not found" }, { status: 404 })
@@ -34,10 +38,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// Update the DELETE function to await params
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectToDatabase()
-    const table = await Table.findByIdAndDelete(params.id)
+    const { id } = await params
+    const table = await Table.findByIdAndDelete(id)
 
     if (!table) {
       return NextResponse.json({ error: "Table not found" }, { status: 404 })

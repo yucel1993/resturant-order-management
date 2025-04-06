@@ -10,16 +10,32 @@ export async function GET(request: NextRequest) {
     const tableId = searchParams.get("tableId")
 
     const query: any = {}
+
+    // Handle comma-separated status values
     if (status) {
-      query.status = status
+      if (status.includes(",")) {
+        // If status contains commas, split it and use $in operator
+        const statusArray = status.split(",").map((s) => s.trim())
+        query.status = { $in: statusArray }
+      } else {
+        // Single status value
+        query.status = status
+      }
     }
+
     if (tableId) {
       query.tableId = tableId
     }
 
+    console.log("Orders API Query:", query) // Add this for debugging
+
     const orders = await Order.find(query).sort({ createdAt: -1 })
+
+    console.log(`Found ${orders.length} orders matching query`) // Add this for debugging
+
     return NextResponse.json(orders)
   } catch (error) {
+    console.error("Error fetching orders:", error)
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 })
   }
 }

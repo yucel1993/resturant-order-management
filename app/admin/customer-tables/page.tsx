@@ -53,6 +53,7 @@ export default function CustomerTablesPage() {
     return () => clearInterval(intervalId) // Clean up on unmount
   }, [])
 
+  // Update the fetchTablesAndOrders function to better handle the orders data
   const fetchTablesAndOrders = async () => {
     setIsLoading(true)
     try {
@@ -64,7 +65,7 @@ export default function CustomerTablesPage() {
       const tablesData = await tablesResponse.json()
       setTables(tablesData)
 
-      // Fetch all active orders
+      // Fetch all active orders (pending, preparing, ready)
       const ordersResponse = await fetch("/api/orders?status=pending,preparing,ready")
       if (!ordersResponse.ok) {
         throw new Error("Failed to fetch orders")
@@ -81,6 +82,7 @@ export default function CustomerTablesPage() {
         ordersMap[order.tableId].push(order)
       })
 
+      console.log("Orders map:", ordersMap) // Add this for debugging
       setTableOrders(ordersMap)
     } catch (error) {
       console.error("Error fetching data:", error)
