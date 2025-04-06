@@ -4,7 +4,7 @@ import { CardContent } from "@/components/ui/card"
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Check, MinusCircle, PlusCircle, Package } from "lucide-react"
+import { Check, MinusCircle, PlusCircle, Package, ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { MyOrders } from "@/components/my-orders"
 
 interface Category {
   _id: string
@@ -67,6 +68,7 @@ export default function MenuPage() {
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false)
   const [submittedName, setSubmittedName] = useState("")
+  const [currentOrderId, setCurrentOrderId] = useState<string>("")
 
   // Add geolocation verification
   useEffect(() => {
@@ -277,6 +279,17 @@ export default function MenuPage() {
         body: JSON.stringify(order),
       })
 
+      const orderData = await orderResponse.json()
+      setCurrentOrderId(orderData._id)
+      // Store the order ID in localStorage to track "my orders"
+      const storedOrderIds = localStorage.getItem("myOrders")
+      const myOrders = storedOrderIds ? JSON.parse(storedOrderIds) : []
+      if (!myOrders.includes(orderData._id)) {
+        localStorage.setItem("myOrders", JSON.stringify([...myOrders, orderData._id]))
+      }
+      // Save the current order ID for the confirmation dialog
+      const currentOrderId = orderData._id
+
       if (!orderResponse.ok) {
         throw new Error("Failed to submit order")
       }
@@ -390,6 +403,11 @@ export default function MenuPage() {
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">Table {tableId}</h1>
         <p className="text-muted-foreground">Browse our menu and place your order</p>
+      </div>
+
+      {/* Add the MyOrders component here */}
+      <div className="mb-6">
+        <MyOrders />
       </div>
 
       {categories.length > 0 ? (
@@ -545,9 +563,18 @@ export default function MenuPage() {
               We have taken your order. Please go to the cash register for payment.
             </p>
           </div>
-          <DialogFooter>
-            <Button onClick={() => setIsConfirmationDialogOpen(false)} className="w-full">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsConfirmationDialogOpen(false)} className="sm:flex-1">
               Close
+            </Button>
+            <Button
+              onClick={() => {
+                setIsConfirmationDialogOpen(false)
+                router.push(`/order-status/${currentOrderId}`)
+              }}
+              className="sm:flex-1"
+            >
+              Track Order Status <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>
