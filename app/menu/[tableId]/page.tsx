@@ -284,9 +284,11 @@ export default function MenuPage() {
       // Store the order ID in localStorage to track "my orders"
       const storedOrderIds = localStorage.getItem("myOrders")
       const myOrders = storedOrderIds ? JSON.parse(storedOrderIds) : []
-      if (!myOrders.includes(orderData._id)) {
-        localStorage.setItem("myOrders", JSON.stringify([...myOrders, orderData._id]))
-      }
+
+      // Add the new order ID and keep only the 10 most recent ones
+      const updatedOrders = [orderData._id, ...myOrders.filter((id: string) => id !== orderData._id)].slice(0, 10) // Keep only the 10 most recent order IDs in storage
+
+      localStorage.setItem("myOrders", JSON.stringify(updatedOrders))
       // Save the current order ID for the confirmation dialog
       const currentOrderId = orderData._id
 
