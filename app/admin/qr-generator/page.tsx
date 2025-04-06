@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Download, QrCode } from "lucide-react"
+import { Download, RefreshCw } from "lucide-react"
 import { QRCodeCanvas } from "qrcode.react"
 import Link from "next/link"
 
@@ -10,13 +10,48 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
 
 export default function QRGenerator() {
   const [tableNumber, setTableNumber] = useState("1")
   const [qrSize, setQrSize] = useState("200")
   const [baseUrl, setBaseUrl] = useState("https://resturant-order-management.vercel.app/menu")
+  const [verificationCode, setVerificationCode] = useState<string | null>(null)
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false)
 
-  const qrUrl = `${baseUrl}/${tableNumber}`
+  const qrUrl = `${baseUrl}/${tableNumber}${verificationCode ? `?code=${verificationCode}` : ""}`
+
+  const generateVerificationCode = async () => {
+    setIsGeneratingCode(true)
+    try {
+      const response = await fetch("/api/tables/verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tableNumber: Number.parseInt(tableNumber) }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate verification code")
+      }
+
+      const data = await response.json()
+      setVerificationCode(data.verificationCode)
+      toast({
+        description: `Verification code generated: ${data.verificationCode}`,
+      })
+    } catch (error) {
+      console.error("Error generating verification code:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate verification code. Please try again.",
+      })
+    } finally {
+      setIsGeneratingCode(false)
+    }
+  }
 
   const downloadQRCode = () => {
     const canvas = document.getElementById("qr-code") as HTMLCanvasElement
@@ -62,6 +97,12 @@ export default function QRGenerator() {
                 color: #666;
                 margin-top: 5px;
               }
+              .verification-code {
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0;
+                color: #000;
+              }
             </style>
           </head>
           <body>
@@ -69,6 +110,7 @@ export default function QRGenerator() {
               <h2>Table ${tableNumber}</h2>
               <p>Scan to order</p>
               <img src="${imageUrl}" alt="QR Code for Table ${tableNumber}" />
+              ${verificationCode ? `<div class="verification-code">Code: ${verificationCode}</div>` : ""}
               <p>${qrUrl}</p>
             </div>
           </body>
@@ -91,8 +133,8 @@ export default function QRGenerator() {
               TableOrder
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/admin/dashboard" className="text-sm font-medium text-muted-foreground">
-                Dashboard
+              <Link href="/admin/customer-tables" className="text-sm font-medium">
+                Customer Tables
               </Link>
               <Link href="/admin/menu" className="text-sm font-medium text-muted-foreground">
                 Menu Management
@@ -100,7 +142,7 @@ export default function QRGenerator() {
               <Link href="/admin/tables" className="text-sm font-medium text-muted-foreground">
                 Tables
               </Link>
-              <Link href="/admin/qr-generator" className="text-sm font-medium">
+              <Link href="/admin/qr-generator" className="text-sm font-medium text-muted-foreground">
                 QR Generator
               </Link>
               <Link href="/admin/settings" className="text-sm font-medium text-muted-foreground">
@@ -129,7 +171,7 @@ export default function QRGenerator() {
                   id="base-url"
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://resturant-order-management.vercel.app/menu"
+                  placeholder="https://your-domain.com/menu"
                 />
                 <p className="text-xs text-muted-foreground">
                   This is the base URL for your menu. Table number will be appended to this URL.
@@ -160,6 +202,20 @@ export default function QRGenerator() {
                     <SelectItem value="320">Extra Large (320px)</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Verification Code</Label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 border rounded-md bg-muted">{verificationCode || "No code generated"}</div>
+                  <Button variant="outline" size="icon" onClick={generateVerificationCode} disabled={isGeneratingCode}>
+                    <RefreshCw className={`h-4 w-4 ${isGeneratingCode ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Generate a verification code that customers must enter to place an order. The code expires after 30
+                  minutes.
+                </p>
               </div>
 
               <div className="pt-2">
@@ -196,36 +252,9 @@ export default function QRGenerator() {
               <div className="mt-4 text-center">
                 <p className="font-medium">Table {tableNumber}</p>
                 <p className="text-sm text-muted-foreground">Scan to order</p>
+                {verificationCode && <p className="mt-2 font-bold">Code: {verificationCode}</p>}
               </div>
             </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Bulk Generation</h2>
-          <Card>
-            <CardHeader>
-              <CardTitle>Generate Multiple QR Codes</CardTitle>
-              <CardDescription>Create QR codes for multiple tables at once</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="start-table">Start Table</Label>
-                  <Input id="start-table" type="number" min="1" defaultValue="1" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-table">End Table</Label>
-                  <Input id="end-table" type="number" min="1" defaultValue="10" />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full sm:w-auto">
-                <QrCode className="mr-2 h-4 w-4" />
-                Generate Bulk QR Codes
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       </main>

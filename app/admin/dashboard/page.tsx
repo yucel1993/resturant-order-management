@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Check, ChevronDown, Clock, MoreHorizontal, Search, Trash2 } from "lucide-react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,9 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 
-// Import the necessary functions at the top
-import { useRouter } from "next/navigation"
-
 interface OrderItem {
   id: string
   name: string
@@ -48,6 +46,14 @@ interface Order {
   status: string
   createdAt: string
   specialInstructions?: string
+  isPackage?: boolean
+}
+
+interface TableInfo {
+  _id: string
+  number: number
+  capacity: number
+  status: string
 }
 
 export default function AdminDashboard() {
@@ -57,8 +63,11 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null)
+  const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
 
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tableId = searchParams.get("tableId")
 
   // Add a logout function
   const logoutAdmin = () => {
@@ -71,13 +80,41 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
+    if (!tableId) {
+      router.push("/admin/customer-tables")
+      return
+    }
+
+    fetchTableInfo()
     fetchOrders()
-  }, [])
+  }, [tableId, router])
+
+  const fetchTableInfo = async () => {
+    if (!tableId) return
+
+    try {
+      const response = await fetch(`/api/tables/${tableId}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch table information")
+      }
+      const data = await response.json()
+      setTableInfo(data)
+    } catch (error) {
+      console.error("Error fetching table info:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load table information. Please try again.",
+      })
+    }
+  }
 
   const fetchOrders = async () => {
+    if (!tableId) return
+
     setIsLoading(true)
     try {
-      const response = await fetch("/api/orders")
+      const response = await fetch(`/api/orders?tableId=${tableId}`)
       if (!response.ok) {
         throw new Error("Failed to fetch orders")
       }
@@ -251,8 +288,8 @@ export default function AdminDashboard() {
               TableOrder
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/admin/dashboard" className="text-sm font-medium">
-                Dashboard
+              <Link href="/admin/customer-tables" className="text-sm font-medium">
+                Customer Tables
               </Link>
               <Link href="/admin/menu" className="text-sm font-medium text-muted-foreground">
                 Menu Management
@@ -275,7 +312,6 @@ export default function AdminDashboard() {
                   Admin <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              {/* Update the dropdown menu to include the logout functionality */}
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -291,8 +327,19 @@ export default function AdminDashboard() {
       <main className="flex-1 container py-6">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">Manage orders and track restaurant performance</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">
+                  {tableInfo ? `Table ${tableInfo.number} Orders` : "Orders"}
+                </h1>
+                <p className="text-muted-foreground">
+                  {tableInfo ? `Manage orders for Table ${tableInfo.number}` : "Manage orders"}
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => router.push("/admin/customer-tables")}>
+                Back to Tables
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -384,6 +431,9 @@ export default function AdminDashboard() {
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button variant="outline" onClick={fetchOrders}>
+                  Refresh
+                </Button>
               </div>
             </div>
 
@@ -392,18 +442,19 @@ export default function AdminDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Order ID</TableHead>
-                    <TableHead>Table</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Items</TableHead>
+                    <TableHead>Special Instructions</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         Loading orders...
                       </TableCell>
                     </TableRow>
@@ -411,7 +462,6 @@ export default function AdminDashboard() {
                     filteredOrders.map((order) => (
                       <TableRow key={order._id}>
                         <TableCell className="font-medium">{order._id.substring(0, 8)}</TableCell>
-                        <TableCell>Table {order.tableNumber}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>
                           {order.items.map((item) => (
@@ -420,8 +470,26 @@ export default function AdminDashboard() {
                             </div>
                           ))}
                         </TableCell>
+                        <TableCell>
+                          {order.specialInstructions ? (
+                            <div className="max-w-xs truncate text-sm">{order.specialInstructions}</div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">None</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
+                        <TableCell>
+                          {order.isPackage ? (
+                            <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                              Takeaway
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                              Dine-in
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -459,7 +527,7 @@ export default function AdminDashboard() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         No orders found.
                       </TableCell>
                     </TableRow>

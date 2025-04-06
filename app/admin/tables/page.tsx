@@ -321,13 +321,13 @@ export default function TablesManagement() {
               TableOrder
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/admin/dashboard" className="text-sm font-medium text-muted-foreground">
-                Dashboard
+              <Link href="/admin/customer-tables" className="text-sm font-medium">
+                Customer Tables
               </Link>
               <Link href="/admin/menu" className="text-sm font-medium text-muted-foreground">
                 Menu Management
               </Link>
-              <Link href="/admin/tables" className="text-sm font-medium">
+              <Link href="/admin/tables" className="text-sm font-medium text-muted-foreground">
                 Tables
               </Link>
               <Link href="/admin/qr-generator" className="text-sm font-medium text-muted-foreground">

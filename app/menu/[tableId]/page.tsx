@@ -4,7 +4,7 @@ import { CardContent } from "@/components/ui/card"
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Check, MinusCircle, PlusCircle } from "lucide-react"
+import { Check, MinusCircle, PlusCircle, Package } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
@@ -58,6 +59,7 @@ export default function MenuPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [customerName, setCustomerName] = useState("")
   const [specialInstructions, setSpecialInstructions] = useState("")
+  const [isPackage, setIsPackage] = useState(false)
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isLocationVerified, setIsLocationVerified] = useState(false)
@@ -264,6 +266,7 @@ export default function MenuPage() {
         status: "pending",
         paymentStatus: "pending",
         specialInstructions,
+        isPackage, // Add the package flag
       }
 
       const orderResponse = await fetch("/api/orders", {
@@ -300,6 +303,7 @@ export default function MenuPage() {
       // Reset form and cart
       setCart([])
       setSpecialInstructions("")
+      setIsPackage(false)
 
       // Close order dialog
       setIsOrderDialogOpen(false)
@@ -493,6 +497,16 @@ export default function MenuPage() {
                   placeholder="Any special requests or allergies?"
                 />
               </div>
+
+              <div className="flex items-center space-x-2">
+                <div className="flex flex-1 items-center space-x-2">
+                  <Switch id="package" checked={isPackage} onCheckedChange={setIsPackage} />
+                  <Label htmlFor="package" className="flex items-center gap-1 cursor-pointer">
+                    <Package className="h-4 w-4" />
+                    Takeaway Order
+                  </Label>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -525,6 +539,11 @@ export default function MenuPage() {
             <div className="rounded-full bg-primary/10 p-3">
               <Check className="h-8 w-8 text-primary" />
             </div>
+          </div>
+          <div className="text-center py-2 bg-yellow-50 rounded-md border border-yellow-200 mb-4">
+            <p className="font-medium text-yellow-800">
+              We have taken your order. Please go to the cash register for payment.
+            </p>
           </div>
           <DialogFooter>
             <Button onClick={() => setIsConfirmationDialogOpen(false)} className="w-full">

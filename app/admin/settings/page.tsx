@@ -92,8 +92,8 @@ export default function SettingsPage() {
               TableOrder
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/admin/dashboard" className="text-sm font-medium text-muted-foreground">
-                Dashboard
+              <Link href="/admin/customer-tables" className="text-sm font-medium">
+                Customer Tables
               </Link>
               <Link href="/admin/menu" className="text-sm font-medium text-muted-foreground">
                 Menu Management
@@ -104,7 +104,7 @@ export default function SettingsPage() {
               <Link href="/admin/qr-generator" className="text-sm font-medium text-muted-foreground">
                 QR Generator
               </Link>
-              <Link href="/admin/settings" className="text-sm font-medium">
+              <Link href="/admin/settings" className="text-sm font-medium text-muted-foreground">
                 Settings
               </Link>
             </nav>
