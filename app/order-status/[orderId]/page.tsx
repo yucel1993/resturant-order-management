@@ -40,6 +40,9 @@ export default function OrderStatusPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastStatus, setLastStatus] = useState<string>("")
+  const [statusChanged, setStatusChanged] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   useEffect(() => {
     // Check if this is the user's order
@@ -51,10 +54,11 @@ export default function OrderStatusPage() {
       localStorage.setItem("myOrders", JSON.stringify([...myOrders, orderId]))
     }
 
+    // Initial fetch
     fetchOrderStatus()
 
-    // Set up polling to refresh the order status every 30 seconds
-    const intervalId = setInterval(fetchOrderStatus, 30000)
+    // Set up polling to refresh the order status more frequently (every 10 seconds)
+    const intervalId = setInterval(fetchOrderStatus, 10000)
 
     return () => clearInterval(intervalId)
   }, [orderId])
@@ -71,7 +75,23 @@ export default function OrderStatusPage() {
       }
 
       const data = await response.json()
+
+      // Check if status has changed
+      if (lastStatus && data.status !== lastStatus) {
+        setStatusChanged(true)
+        // Play a sound or show a notification
+        showStatusChangeNotification(data.status)
+
+        // Reset the status change indicator after 5 seconds
+        setTimeout(() => {
+          setStatusChanged(false)
+        }, 5000)
+      }
+
+      // Update the last status
+      setLastStatus(data.status)
       setOrder(data)
+      setLastUpdated(new Date())
       setIsLoading(false)
     } catch (error) {
       console.error("Error fetching order:", error)
@@ -142,6 +162,38 @@ export default function OrderStatusPage() {
     return date.toLocaleString()
   }
 
+  // Update the showStatusChangeNotification function to use our API route
+  const showStatusChangeNotification = (newStatus: string) => {
+    // Play a sound (optional)
+    try {
+      const audio = new Audio("/api/notification-sound")
+      audio.play().catch((e) => console.log("Audio play failed:", e))
+    } catch (e) {
+      console.log("Audio not supported")
+    }
+
+    // Show a toast notification
+    toast({
+      title: "Order Status Updated",
+      description: `Your order is now ${newStatus}`,
+      variant: "default",
+    })
+  }
+
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return ""
+
+    const now = new Date()
+    const diffSeconds = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000)
+
+    if (diffSeconds < 10) return "just now"
+    if (diffSeconds < 60) return `${diffSeconds} seconds ago`
+    if (diffSeconds < 120) return "1 minute ago"
+
+    const diffMinutes = Math.floor(diffSeconds / 60)
+    return `${diffMinutes} minutes ago`
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12 flex items-center justify-center">
@@ -185,14 +237,23 @@ export default function OrderStatusPage() {
             <div>
               <h3 className="font-medium">Order Status</h3>
               <div className="flex items-center gap-2 mt-1">
-                {getStatusBadge(order.status)}
-                {isRefreshing && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                <div className={`transition-all duration-500 ${statusChanged ? "animate-pulse" : ""}`}>
+                  {getStatusBadge(order.status)}
+                </div>
+                {statusChanged && (
+                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full animate-pulse">
+                    Just updated!
+                  </span>
+                )}
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchOrderStatus} disabled={isRefreshing}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+            <div className="flex flex-col items-end">
+              <Button variant="outline" size="sm" onClick={fetchOrderStatus} disabled={isRefreshing}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              {lastUpdated && <span className="text-xs text-muted-foreground mt-1">Updated {formatLastUpdated()}</span>}
+            </div>
           </div>
 
           {/* Status timeline */}
@@ -203,7 +264,13 @@ export default function OrderStatusPage() {
               className={`relative flex items-start mb-6 ${currentStep >= 1 ? "text-primary" : "text-muted-foreground"}`}
             >
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border ${currentStep >= 1 ? "border-primary bg-primary text-primary-foreground" : "border-muted bg-background"}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+                  currentStep === 1
+                    ? "border-primary bg-primary text-primary-foreground animate-pulse"
+                    : currentStep > 1
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted bg-background"
+                }`}
               >
                 1
               </div>
@@ -217,7 +284,13 @@ export default function OrderStatusPage() {
               className={`relative flex items-start mb-6 ${currentStep >= 2 ? "text-primary" : "text-muted-foreground"}`}
             >
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border ${currentStep >= 2 ? "border-primary bg-primary text-primary-foreground" : "border-muted bg-background"}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+                  currentStep === 2
+                    ? "border-primary bg-primary text-primary-foreground animate-pulse"
+                    : currentStep > 2
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted bg-background"
+                }`}
               >
                 2
               </div>
@@ -231,7 +304,13 @@ export default function OrderStatusPage() {
               className={`relative flex items-start mb-6 ${currentStep >= 3 ? "text-primary" : "text-muted-foreground"}`}
             >
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border ${currentStep >= 3 ? "border-primary bg-primary text-primary-foreground" : "border-muted bg-background"}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+                  currentStep === 3
+                    ? "border-primary bg-primary text-primary-foreground animate-pulse"
+                    : currentStep > 3
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted bg-background"
+                }`}
               >
                 3
               </div>
@@ -245,7 +324,13 @@ export default function OrderStatusPage() {
 
             <div className={`relative flex items-start ${currentStep >= 4 ? "text-primary" : "text-muted-foreground"}`}>
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border ${currentStep >= 4 ? "border-primary bg-primary text-primary-foreground" : "border-muted bg-background"}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+                  currentStep === 4
+                    ? "border-primary bg-primary text-primary-foreground animate-pulse"
+                    : currentStep > 4
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted bg-background"
+                }`}
               >
                 <Check className="h-4 w-4" />
               </div>
