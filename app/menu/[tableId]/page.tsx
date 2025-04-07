@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Check, MinusCircle, PlusCircle, Package, ChevronRight, RefreshCw, AlertCircle } from "lucide-react"
+import { Check, MinusCircle, PlusCircle, Package, ChevronRight, Utensils } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,7 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { MyOrders } from "@/components/my-orders"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface Category {
   _id: string
@@ -56,8 +55,6 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [loadingError, setLoadingError] = useState<string | null>(null)
-  const [loadingAttempts, setLoadingAttempts] = useState(0)
   const [cart, setCart] = useState<CartItem[]>([])
   const [customerName, setCustomerName] = useState("")
   const [specialInstructions, setSpecialInstructions] = useState("")
@@ -70,6 +67,7 @@ export default function MenuPage() {
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false)
   const [submittedName, setSubmittedName] = useState("")
   const [currentOrderId, setCurrentOrderId] = useState<string>("")
+  const [retryCount, setRetryCount] = useState(0)
 
   // Add geolocation verification
   useEffect(() => {
@@ -146,16 +144,9 @@ export default function MenuPage() {
     return R * c // Distance in meters
   }
 
-  // Combined fetch function with retry logic
-  const fetchData = async (isRetry = false) => {
-    if (isRetry) {
-      setLoadingAttempts((prev) => prev + 1)
-    } else {
-      setLoadingAttempts(1)
-    }
-
+  // Fetch data with automatic retries
+  const fetchData = async () => {
     setIsLoading(true)
-    setLoadingError(null)
 
     try {
       // Fetch categories and menu items in parallel
@@ -164,41 +155,40 @@ export default function MenuPage() {
         fetch("/api/menu-items"),
       ])
 
-      if (!categoriesResponse.ok) {
-        throw new Error("Failed to fetch categories")
-      }
-
-      if (!menuItemsResponse.ok) {
-        throw new Error("Failed to fetch menu items")
+      if (!categoriesResponse.ok || !menuItemsResponse.ok) {
+        throw new Error("Failed to fetch menu data")
       }
 
       const categoriesData = await categoriesResponse.json()
       const menuItemsData = await menuItemsResponse.json()
 
       // Validate the data
-      if (!Array.isArray(categoriesData) || categoriesData.length === 0) {
-        throw new Error("No categories found")
-      }
-
-      if (!Array.isArray(menuItemsData) || menuItemsData.length === 0) {
-        throw new Error("No menu items found")
+      if (
+        !Array.isArray(categoriesData) ||
+        categoriesData.length === 0 ||
+        !Array.isArray(menuItemsData) ||
+        menuItemsData.length === 0
+      ) {
+        throw new Error("Invalid menu data")
       }
 
       setCategories(categoriesData)
       setMenuItems(menuItemsData)
-      setLoadingError(null)
+      setIsLoading(false)
+      setRetryCount(0) // Reset retry count on success
     } catch (error) {
       console.error("Error fetching data:", error)
-      setLoadingError(error instanceof Error ? error.message : "Failed to load menu data")
 
-      // Auto-retry once after 2 seconds if this is the first attempt
-      if (loadingAttempts < 2) {
-        setTimeout(() => {
-          fetchData(true)
-        }, 2000)
-      }
-    } finally {
-      setIsLoading(false)
+      // Implement exponential backoff for retries
+      const retryDelay = Math.min(1000 * Math.pow(1.5, retryCount), 10000) // Max 10 seconds
+
+      console.log(`Retrying in ${retryDelay}ms (attempt ${retryCount + 1})`)
+      setRetryCount((prev) => prev + 1)
+
+      // Schedule retry
+      setTimeout(() => {
+        fetchData()
+      }, retryDelay)
     }
   }
 
@@ -409,56 +399,24 @@ export default function MenuPage() {
     )
   }
 
-  // Loading state with retry button
+  // Professional loading state - keep showing until data is loaded
   if (isLocationChecking || isLoading) {
     return (
       <div className="container mx-auto px-4 py-6 md:py-10 flex flex-col items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Loading Menu</CardTitle>
-            <CardDescription>
-              {isLocationChecking ? "Verifying your location..." : `Loading menu items (Attempt ${loadingAttempts})...`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center py-6">
-            <div className="flex flex-col items-center gap-4">
-              <RefreshCw className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-center text-muted-foreground">
-                Please wait while we load the menu for Table {tableId}
-              </p>
+        <div className="flex flex-col items-center justify-center gap-6 text-center">
+          <div className="relative h-24 w-24">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-16 w-16 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Error state with retry button
-  if (loadingError) {
-    return (
-      <div className="container mx-auto px-4 py-6 md:py-10 flex flex-col items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Unable to Load Menu</CardTitle>
-            <CardDescription>We encountered an issue while loading the menu</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{loadingError}</AlertDescription>
-            </Alert>
-            <p className="text-center text-muted-foreground">
-              Please try refreshing the page or check your internet connection
-            </p>
-          </CardContent>
-          <CardFooter className="flex justify-center">
-            <Button onClick={() => fetchData()} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Retry Loading Menu
-            </Button>
-          </CardFooter>
-        </Card>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Utensils className="h-8 w-8 text-primary" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold">Loading Menu</h2>
+            <p className="text-muted-foreground">Please wait while we prepare the menu for Table {tableId}</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -506,16 +464,7 @@ export default function MenuPage() {
         </Tabs>
       ) : (
         <div className="text-center py-8">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>No menu categories available</AlertTitle>
-            <AlertDescription>
-              <Button variant="outline" onClick={() => fetchData()} className="mt-2 gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Refresh Menu
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <p>No menu categories available.</p>
         </div>
       )}
 

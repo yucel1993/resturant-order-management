@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Clock, Package, RefreshCw, AlertCircle } from "lucide-react"
+import { Clock, Package } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface Order {
   _id: string
@@ -23,8 +22,8 @@ interface Order {
 export function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
   const router = useRouter()
 
   useEffect(() => {
@@ -33,7 +32,6 @@ export function MyOrders() {
 
   const fetchMyOrders = async () => {
     setIsLoading(true)
-    setLoadError(null)
     setIsRefreshing(true)
 
     try {
@@ -88,10 +86,22 @@ export function MyOrders() {
       )
 
       setOrders(validOrders)
-      setLoadError(null)
+      setRetryCount(0) // Reset retry count on success
     } catch (error) {
       console.error("Error fetching orders:", error)
-      setLoadError("Failed to load your recent orders")
+
+      // Implement exponential backoff for retries
+      const retryDelay = Math.min(1000 * Math.pow(1.5, retryCount), 10000) // Max 10 seconds
+
+      console.log(`Retrying in ${retryDelay}ms (attempt ${retryCount + 1})`)
+      setRetryCount((prev) => prev + 1)
+
+      // Schedule retry if we haven't loaded any orders yet
+      if (orders.length === 0 && retryCount < 5) {
+        setTimeout(() => {
+          fetchMyOrders()
+        }, retryDelay)
+      }
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
@@ -158,42 +168,6 @@ export function MyOrders() {
     )
   }
 
-  if (loadError) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">My Recent Orders</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error loading orders</AlertTitle>
-            <AlertDescription>{loadError}</AlertDescription>
-          </Alert>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full flex items-center justify-center gap-2"
-            onClick={fetchMyOrders}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Refreshing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4" />
-                Retry Loading Orders
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
   if (!orders.length) {
     return null
   }
@@ -232,15 +206,14 @@ export function MyOrders() {
             <Separator />
           </div>
         ))}
-        <Button variant="outline" size="sm" className="w-full" onClick={fetchMyOrders} disabled={isRefreshing}>
-          {isRefreshing ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-              Refreshing...
-            </>
-          ) : (
-            "Refresh Orders"
-          )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={fetchMyOrders}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? <Clock className="h-4 w-4 animate-spin mr-2" /> : "Refresh Orders"}
         </Button>
       </CardContent>
     </Card>
