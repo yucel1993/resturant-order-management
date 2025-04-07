@@ -261,6 +261,9 @@ export default function CustomerTablesPage() {
               <Link href="/admin/tables" className="text-sm font-medium text-muted-foreground">
                 Tables
               </Link>
+              <Link href="/admin/statistics" className="text-sm font-medium text-muted-foreground">
+                Statistics
+              </Link>
               <Link href="/admin/qr-generator" className="text-sm font-medium text-muted-foreground">
                 QR Generator
               </Link>
