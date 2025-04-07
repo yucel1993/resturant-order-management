@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Clock, Package } from "lucide-react"
+import { Clock, Package, RefreshCw, AlertCircle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface Order {
   _id: string
@@ -22,6 +23,8 @@ interface Order {
 export function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -30,12 +33,16 @@ export function MyOrders() {
 
   const fetchMyOrders = async () => {
     setIsLoading(true)
+    setLoadError(null)
+    setIsRefreshing(true)
+
     try {
       // Get order IDs from localStorage
       const storedOrderIds = localStorage.getItem("myOrders")
       if (!storedOrderIds) {
         setOrders([])
         setIsLoading(false)
+        setIsRefreshing(false)
         return
       }
 
@@ -43,27 +50,51 @@ export function MyOrders() {
       if (!myOrderIds.length) {
         setOrders([])
         setIsLoading(false)
+        setIsRefreshing(false)
         return
       }
 
-      // Fetch each order
-      const orderPromises = myOrderIds.map((id) =>
-        fetch(`/api/orders/${id}`)
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null),
+      // Fetch each order with retry logic
+      const fetchOrderWithRetry = async (id: string, retries = 2): Promise<any> => {
+        try {
+          const response = await fetch(`/api/orders/${id}`)
+          if (!response.ok) {
+            throw new Error(`Failed to fetch order ${id}`)
+          }
+          return response.json()
+        } catch (error) {
+          if (retries > 0) {
+            // Wait 500ms before retrying
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            return fetchOrderWithRetry(id, retries - 1)
+          }
+          console.error(`Failed to fetch order ${id} after retries:`, error)
+          return null
+        }
+      }
+
+      // Fetch orders with retry
+      const orderPromises = myOrderIds.map((id) => fetchOrderWithRetry(id))
+      const orderResults = await Promise.all(orderPromises)
+
+      // Filter out null results, sort by date (newest first), and take only the 3 most recent
+      const validOrders = orderResults
+        .filter((order) => order !== null && order !== undefined)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 3)
+
+      console.log(
+        `Showing ${validOrders.length} most recent orders out of ${orderResults.filter(Boolean).length} total orders`,
       )
 
-      const orderResults = await Promise.all(orderPromises)
-      const validOrders = orderResults
-        .filter(Boolean)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 3) // Only show the 3 most recent orders
-
       setOrders(validOrders)
+      setLoadError(null)
     } catch (error) {
       console.error("Error fetching orders:", error)
+      setLoadError("Failed to load your recent orders")
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -127,6 +158,42 @@ export function MyOrders() {
     )
   }
 
+  if (loadError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">My Recent Orders</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error loading orders</AlertTitle>
+            <AlertDescription>{loadError}</AlertDescription>
+          </Alert>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full flex items-center justify-center gap-2"
+            onClick={fetchMyOrders}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Retry Loading Orders
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (!orders.length) {
     return null
   }
@@ -165,8 +232,15 @@ export function MyOrders() {
             <Separator />
           </div>
         ))}
-        <Button variant="outline" size="sm" className="w-full" onClick={fetchMyOrders}>
-          Refresh Orders
+        <Button variant="outline" size="sm" className="w-full" onClick={fetchMyOrders} disabled={isRefreshing}>
+          {isRefreshing ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              Refreshing...
+            </>
+          ) : (
+            "Refresh Orders"
+          )}
         </Button>
       </CardContent>
     </Card>
