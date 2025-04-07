@@ -115,7 +115,7 @@ export default function CustomerTablesPage() {
   const hasActiveOrders = (tableId: string) => {
     if (!tableOrders[tableId]) return false
     return tableOrders[tableId].some(
-      (order) => order.status === "pending" || order.status === "preparing" || order.status === "ready",
+      (order) => order.status === "pending" || order.status === "preparing", // Removed "ready" from active orders
     )
   }
 

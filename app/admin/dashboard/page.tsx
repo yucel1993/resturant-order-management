@@ -160,8 +160,8 @@ export default function AdminDashboard() {
         prevOrders.map((order) => (order._id === orderId ? { ...order, status: newStatus } : order)),
       )
 
-      // If the order is completed or cancelled, check if we need to update table status
-      if (newStatus === "completed" || newStatus === "cancelled") {
+      // If the order is ready, completed, or cancelled, check if we need to update table status
+      if (newStatus === "ready" || newStatus === "completed" || newStatus === "cancelled") {
         // Check if there are any other active orders for this table
         const tableStatusResponse = await fetch(`/api/orders/update-table-status?tableId=${tableId}`)
         if (tableStatusResponse.ok) {
@@ -470,13 +470,13 @@ export default function AdminDashboard() {
                       </TableCell>
                     </TableRow>
                   ) : filteredOrders.length > 0 ? (
-                    filteredOrders.map((order) => (
-                      <TableRow key={order._id}>
+                    filteredOrders.map((order,i) => (
+                      <TableRow key={i}>
                         <TableCell className="font-medium">{order._id.substring(0, 8)}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>
-                          {order.items.map((item) => (
-                            <div key={item.id} className="text-sm">
+                          {order.items.map((item,i) => (
+                            <div key={i} className="text-sm">
                               {item.quantity}x {item.name}
                             </div>
                           ))}

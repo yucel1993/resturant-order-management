@@ -40,9 +40,10 @@ export async function GET(request: NextRequest) {
     await connectToDatabase()
 
     // Check if there are any active orders for this table
+    // Modified to only consider pending and preparing orders as active
     const activeOrders = await Order.find({
       tableId,
-      status: { $in: ["pending", "preparing", "ready"] },
+      status: { $in: ["pending", "preparing"] }, // Removed "ready" from active orders
     }).countDocuments()
 
     // Determine the appropriate table status

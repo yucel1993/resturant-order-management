@@ -21,9 +21,10 @@ export async function DELETE(request: NextRequest) {
     })
 
     // Check if there are any remaining active orders for this table
+    // Modified to only consider pending and preparing orders as active
     const activeOrdersCount = await Order.countDocuments({
       tableId: tableId,
-      status: { $in: ["pending", "preparing", "ready"] },
+      status: { $in: ["pending", "preparing"] }, // Removed "ready" from active orders
     })
 
     // If no active orders remain, update the table status to available
