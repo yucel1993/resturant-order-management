@@ -160,22 +160,34 @@ export default function AdminDashboard() {
         prevOrders.map((order) => (order._id === orderId ? { ...order, status: newStatus } : order)),
       )
 
-      // If the order is ready, completed, or cancelled, check if we need to update table status
-      if (newStatus === "ready" || newStatus === "completed" || newStatus === "cancelled") {
-        // Check if there are any other active orders for this table
-        const tableStatusResponse = await fetch(`/api/orders/update-table-status?tableId=${tableId}`)
-        if (tableStatusResponse.ok) {
-          // The API will automatically set the table to available if there are no active orders
-          const tableStatusData = await tableStatusResponse.json()
-          if (tableStatusData.table && tableStatusData.activeOrders === 0) {
-            // Update the table info if we have it
-            if (tableInfo) {
-              setTableInfo({
-                ...tableInfo,
-                status: "available",
+      // Only update table status when an order is marked as completed
+      if (newStatus === "completed") {
+        try {
+          // First check if there are any other active orders (pending, preparing, or ready)
+          const activeOrdersResponse = await fetch(`/api/orders?tableId=${tableId}&status=pending,preparing,ready`)
+          if (activeOrdersResponse.ok) {
+            const activeOrders = await activeOrdersResponse.json()
+
+            // If no other active orders, update table status to available
+            if (!activeOrders || activeOrders.length === 0) {
+              const updateTableResponse = await fetch(`/api/tables/${tableId}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ status: "available" }),
               })
+
+              if (updateTableResponse.ok && tableInfo) {
+                setTableInfo({
+                  ...tableInfo,
+                  status: "available",
+                })
+              }
             }
           }
+        } catch (error) {
+          console.error("Error updating table status:", error)
         }
       }
 
@@ -470,13 +482,13 @@ export default function AdminDashboard() {
                       </TableCell>
                     </TableRow>
                   ) : filteredOrders.length > 0 ? (
-                    filteredOrders.map((order,i) => (
-                      <TableRow key={i}>
+                    filteredOrders.map((order) => (
+                      <TableRow key={order._id}>
                         <TableCell className="font-medium">{order._id.substring(0, 8)}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>
-                          {order.items.map((item,i) => (
-                            <div key={i} className="text-sm">
+                          {order.items.map((item) => (
+                            <div key={item.id} className="text-sm">
                               {item.quantity}x {item.name}
                             </div>
                           ))}

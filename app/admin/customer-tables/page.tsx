@@ -111,11 +111,11 @@ export default function CustomerTablesPage() {
     }
   }
 
-  // Let's also add a manual check function to verify if a table has orders
+  // Updated to include "ready" orders as active
   const hasActiveOrders = (tableId: string) => {
     if (!tableOrders[tableId]) return false
     return tableOrders[tableId].some(
-      (order) => order.status === "pending" || order.status === "preparing", // Removed "ready" from active orders
+      (order) => order.status === "pending" || order.status === "preparing" || order.status === "ready",
     )
   }
 
@@ -200,7 +200,15 @@ export default function CustomerTablesPage() {
     }
   }
 
-  const getTableStatusBadge = (status: string, hasActiveOrders: boolean) => {
+  // Updated to include "ready" orders as keeping the table occupied
+  const getTableStatusBadge = (status: string, tableId: string) => {
+    // Check if there are any pending, preparing, or ready orders
+    const orders = tableOrders[tableId] || []
+    const hasActiveOrders = orders.some(
+      (order) => order.status === "pending" || order.status === "preparing" || order.status === "ready",
+    )
+
+    // If there are pending, preparing, or ready orders, show as occupied
     if (hasActiveOrders) {
       return (
         <Badge variant="outline" className="bg-red-100 text-red-800">
@@ -209,6 +217,7 @@ export default function CustomerTablesPage() {
       )
     }
 
+    // Otherwise, use the table's actual status
     switch (status) {
       case "available":
         return (
@@ -217,9 +226,11 @@ export default function CustomerTablesPage() {
           </Badge>
         )
       case "occupied":
+        // If status is occupied but no active orders, show as available
+        // This handles cases where the database status might be out of sync
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800">
-            Occupied
+          <Badge variant="outline" className="bg-green-100 text-green-800">
+            Available
           </Badge>
         )
       case "reserved":
@@ -314,7 +325,7 @@ export default function CustomerTablesPage() {
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-center">
                         <CardTitle>Table {table.number}</CardTitle>
-                        {getTableStatusBadge(table.status, hasOrders)}
+                        {getTableStatusBadge(table.status, table._id)}
                       </div>
                       <div className="text-sm text-muted-foreground">Capacity: {table.capacity} people</div>
                     </CardHeader>
@@ -362,12 +373,15 @@ export default function CustomerTablesPage() {
                   {tables.length > 0 ? (
                     tables.map((table) => {
                       const orders = tableOrders[table._id] || []
+                      const activeOrders = orders.filter(
+                        (o) => o.status === "pending" || o.status === "preparing" || o.status === "ready",
+                      )
                       return (
                         <TableRow key={table._id}>
                           <TableCell className="font-medium">Table {table.number}</TableCell>
-                          <TableCell>{getTableStatusBadge(table.status, orders.length > 0)}</TableCell>
+                          <TableCell>{getTableStatusBadge(table.status, table._id)}</TableCell>
                           <TableCell>{table.capacity} people</TableCell>
-                          <TableCell>{orders.filter((o) => o.status !== "completed").length}</TableCell>
+                          <TableCell>{activeOrders.length}</TableCell>
                           <TableCell>{getCompletedOrdersCount(table._id)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -391,7 +405,7 @@ export default function CustomerTablesPage() {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         No tables found
                       </TableCell>
                     </TableRow>
