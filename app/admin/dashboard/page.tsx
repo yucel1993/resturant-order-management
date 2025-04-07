@@ -98,6 +98,7 @@ export default function AdminDashboard() {
         throw new Error("Failed to fetch table information")
       }
       const data = await response.json()
+      console.log("Table info:", data)
       setTableInfo(data)
     } catch (error) {
       console.error("Error fetching table info:", error)
@@ -114,11 +115,16 @@ export default function AdminDashboard() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/orders?tableId=${tableId}`)
+      // Use a more explicit URL to avoid any encoding issues
+      const url = `/api/orders?tableId=${tableId}`
+      console.log("Fetching orders with URL:", url)
+
+      const response = await fetch(url)
       if (!response.ok) {
         throw new Error("Failed to fetch orders")
       }
       const data = await response.json()
+      console.log("Orders for table:", data)
       setOrders(data)
     } catch (error) {
       console.error("Error fetching orders:", error)
@@ -156,14 +162,19 @@ export default function AdminDashboard() {
 
       // If the order is completed or cancelled, check if we need to update table status
       if (newStatus === "completed" || newStatus === "cancelled") {
-        // Get the table ID from the order
-        const order = orders.find((o) => o._id === orderId)
-        if (order) {
-          // Check if there are any other active orders for this table
-          const tableStatusResponse = await fetch(`/api/orders/update-table-status?tableId=${order.tableId}`)
-          if (tableStatusResponse.ok) {
-            // The API will automatically set the table to available if there are no active orders
-            console.log("Table status updated")
+        // Check if there are any other active orders for this table
+        const tableStatusResponse = await fetch(`/api/orders/update-table-status?tableId=${tableId}`)
+        if (tableStatusResponse.ok) {
+          // The API will automatically set the table to available if there are no active orders
+          const tableStatusData = await tableStatusResponse.json()
+          if (tableStatusData.table && tableStatusData.activeOrders === 0) {
+            // Update the table info if we have it
+            if (tableInfo) {
+              setTableInfo({
+                ...tableInfo,
+                status: "available",
+              })
+            }
           }
         }
       }

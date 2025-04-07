@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Clock, RefreshCw } from "lucide-react"
+import { Clock, RefreshCw, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -10,6 +10,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface TableType {
   _id: string
@@ -44,6 +52,10 @@ export default function CustomerTablesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [tableToDeleteFrom, setTableToDeleteFrom] = useState<string | null>(null)
+  const [isDeletingOrders, setIsDeletingOrders] = useState(false)
+
   useEffect(() => {
     fetchTablesAndOrders()
 
@@ -53,7 +65,6 @@ export default function CustomerTablesPage() {
     return () => clearInterval(intervalId) // Clean up on unmount
   }, [])
 
-  // Update the fetchTablesAndOrders function to better handle the orders data
   const fetchTablesAndOrders = async () => {
     setIsLoading(true)
     try {
@@ -63,26 +74,30 @@ export default function CustomerTablesPage() {
         throw new Error("Failed to fetch tables")
       }
       const tablesData = await tablesResponse.json()
+      console.log("Tables data:", tablesData)
       setTables(tablesData)
 
-      // Fetch all active orders (pending, preparing, ready)
-      const ordersResponse = await fetch("/api/orders?status=pending,preparing,ready")
+      // Fetch all orders (including completed ones)
+      const ordersResponse = await fetch("/api/orders")
       if (!ordersResponse.ok) {
         throw new Error("Failed to fetch orders")
       }
       const ordersData = await ordersResponse.json()
+      console.log("Orders data:", ordersData)
 
       // Group orders by tableId
       const ordersMap: Record<string, Order[]> = {}
 
-      ordersData.forEach((order: Order) => {
-        if (!ordersMap[order.tableId]) {
-          ordersMap[order.tableId] = []
-        }
-        ordersMap[order.tableId].push(order)
-      })
+      if (ordersData && ordersData.length > 0) {
+        ordersData.forEach((order: Order) => {
+          if (!ordersMap[order.tableId]) {
+            ordersMap[order.tableId] = []
+          }
+          ordersMap[order.tableId].push(order)
+        })
+      }
 
-      console.log("Orders map:", ordersMap) // Add this for debugging
+      console.log("Orders map:", ordersMap)
       setTableOrders(ordersMap)
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -96,8 +111,56 @@ export default function CustomerTablesPage() {
     }
   }
 
+  // Let's also add a manual check function to verify if a table has orders
+  const hasActiveOrders = (tableId: string) => {
+    if (!tableOrders[tableId]) return false
+    return tableOrders[tableId].some(
+      (order) => order.status === "pending" || order.status === "preparing" || order.status === "ready",
+    )
+  }
+
   const navigateToDashboard = (tableId: string) => {
     router.push(`/admin/dashboard?tableId=${tableId}`)
+  }
+
+  const deleteCompletedOrders = async (tableId: string) => {
+    setTableToDeleteFrom(tableId)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteCompletedOrders = async () => {
+    if (!tableToDeleteFrom) return
+
+    setIsDeletingOrders(true)
+    try {
+      const response = await fetch(`/api/orders/delete-completed?tableId=${tableToDeleteFrom}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete completed orders")
+      }
+
+      const result = await response.json()
+
+      toast({
+        description: `Successfully deleted ${result.deletedCount} completed orders`,
+      })
+
+      // Refresh the data
+      fetchTablesAndOrders()
+    } catch (error) {
+      console.error("Error deleting completed orders:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete completed orders. Please try again.",
+      })
+    } finally {
+      setIsDeletingOrders(false)
+      setIsDeleteDialogOpen(false)
+      setTableToDeleteFrom(null)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -137,8 +200,8 @@ export default function CustomerTablesPage() {
     }
   }
 
-  const getTableStatusBadge = (status: string, hasOrders: boolean) => {
-    if (hasOrders) {
+  const getTableStatusBadge = (status: string, hasActiveOrders: boolean) => {
+    if (hasActiveOrders) {
       return (
         <Badge variant="outline" className="bg-red-100 text-red-800">
           Occupied
@@ -173,6 +236,11 @@ export default function CustomerTablesPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString()
+  }
+
+  const getCompletedOrdersCount = (tableId: string) => {
+    if (!tableOrders[tableId]) return 0
+    return tableOrders[tableId].filter((order) => order.status === "completed").length
   }
 
   return (
@@ -212,10 +280,12 @@ export default function CustomerTablesPage() {
 
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold">Active Tables</h2>
-            <Button variant="outline" onClick={fetchTablesAndOrders} className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={fetchTablesAndOrders} className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -227,7 +297,10 @@ export default function CustomerTablesPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {tables.map((table) => {
                 const orders = tableOrders[table._id] || []
-                const hasOrders = orders.length > 0
+                const activeOrders = orders.filter(
+                  (o) => o.status === "pending" || o.status === "preparing" || o.status === "ready",
+                )
+                const hasOrders = activeOrders.length > 0
 
                 return (
                   <Card
@@ -246,7 +319,7 @@ export default function CustomerTablesPage() {
                       {hasOrders ? (
                         <div className="space-y-4">
                           <div className="font-medium">
-                            {orders.length} Active {orders.length === 1 ? "Order" : "Orders"}
+                            {activeOrders.length} Active {activeOrders.length === 1 ? "Order" : "Orders"}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             Click to view and manage orders for this table
@@ -278,6 +351,7 @@ export default function CustomerTablesPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Capacity</TableHead>
                     <TableHead>Active Orders</TableHead>
+                    <TableHead>Completed Orders</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -290,11 +364,24 @@ export default function CustomerTablesPage() {
                           <TableCell className="font-medium">Table {table.number}</TableCell>
                           <TableCell>{getTableStatusBadge(table.status, orders.length > 0)}</TableCell>
                           <TableCell>{table.capacity} people</TableCell>
-                          <TableCell>{orders.length}</TableCell>
+                          <TableCell>{orders.filter((o) => o.status !== "completed").length}</TableCell>
+                          <TableCell>{getCompletedOrdersCount(table._id)}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => navigateToDashboard(table._id)}>
-                              View Orders
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => navigateToDashboard(table._id)}>
+                                View Orders
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteCompletedOrders(table._id)}
+                                className="text-red-500 hover:text-red-700"
+                                disabled={getCompletedOrdersCount(table._id) === 0}
+                                title="Delete completed orders"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -312,6 +399,25 @@ export default function CustomerTablesPage() {
           </div>
         </div>
       </main>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Completed Orders</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete all completed orders for this table? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeletingOrders}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteCompletedOrders} disabled={isDeletingOrders}>
+              {isDeletingOrders ? "Deleting..." : "Delete Orders"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
