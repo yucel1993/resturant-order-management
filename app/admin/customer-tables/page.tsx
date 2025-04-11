@@ -254,6 +254,30 @@ export default function CustomerTablesPage() {
     return tableOrders[tableId].filter((order) => order.status === "completed").length
   }
 
+  // New functions to count pending and ready orders
+  const getPendingOrdersCount = (tableId: string) => {
+    if (!tableOrders[tableId]) return 0
+    return tableOrders[tableId].filter((order) => order.status === "pending").length
+  }
+
+  const getReadyOrdersCount = (tableId: string) => {
+    if (!tableOrders[tableId]) return 0
+    return tableOrders[tableId].filter((order) => order.status === "ready").length
+  }
+
+  const getPreparingOrdersCount = (tableId: string) => {
+    if (!tableOrders[tableId]) return 0
+    return tableOrders[tableId].filter((order) => order.status === "preparing").length
+  }
+
+  // Get total active orders (pending + preparing + ready)
+  const getActiveOrdersCount = (tableId: string) => {
+    if (!tableOrders[tableId]) return 0
+    return tableOrders[tableId].filter(
+      (order) => order.status === "pending" || order.status === "preparing" || order.status === "ready",
+    ).length
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background">
@@ -365,6 +389,9 @@ export default function CustomerTablesPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Capacity</TableHead>
                     <TableHead>Active Orders</TableHead>
+                    <TableHead>Pending</TableHead>
+                    <TableHead>Preparing</TableHead>
+                    <TableHead>Ready</TableHead>
                     <TableHead>Completed Orders</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -381,7 +408,28 @@ export default function CustomerTablesPage() {
                           <TableCell className="font-medium">Table {table.number}</TableCell>
                           <TableCell>{getTableStatusBadge(table.status, table._id)}</TableCell>
                           <TableCell>{table.capacity} people</TableCell>
-                          <TableCell>{activeOrders.length}</TableCell>
+                          <TableCell>{getActiveOrdersCount(table._id)}</TableCell>
+                          <TableCell>
+                            {getPendingOrdersCount(table._id) > 0 && (
+                              <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                                {getPendingOrdersCount(table._id)}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getPreparingOrdersCount(table._id) > 0 && (
+                              <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                {getPreparingOrdersCount(table._id)}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getReadyOrdersCount(table._id) > 0 && (
+                              <Badge variant="outline" className="bg-green-100 text-green-800">
+                                {getReadyOrdersCount(table._id)}
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell>{getCompletedOrdersCount(table._id)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -405,7 +453,7 @@ export default function CustomerTablesPage() {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={9} className="h-24 text-center">
                         No tables found
                       </TableCell>
                     </TableRow>
@@ -438,4 +486,3 @@ export default function CustomerTablesPage() {
     </div>
   )
 }
-
